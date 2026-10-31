@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: kala-fest-allocator
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python kala_fest_allocator.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: MPLBACKEND
+        value: Agg

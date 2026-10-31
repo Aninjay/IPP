@@ -1,0 +1,133 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAPMI Cultural Committee - Kala Fest</title>
+<style>
+:root{--o:#E8752E;--ol:#FDEBDD;--od:#8A3E0E;--bd:#E5E5E5;--tx:#222;--mu:#6b6b6b}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:var(--tx);background:#fff}
+h2{font-size:18px;margin:0 0 10px;font-weight:600}h3{font-size:15px;margin:18px 0 8px}
+button{font:inherit;padding:6px 12px;border:1px solid #ccc;background:#fff;border-radius:6px;cursor:pointer}button:hover{background:#f6f6f6}
+button.p{background:var(--o);color:#fff;border-color:var(--o)}button.p:hover{background:#d4651f}button.s{padding:2px 8px;font-size:12px}
+input,select{font:inherit;padding:6px 8px;border:1px solid #ccc;border-radius:6px}
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f1ee url(bg.jpg) center/cover}
+#login:before{content:"";position:fixed;inset:0;background:rgba(255,255,255,.72)}
+.lc{position:relative;background:#fff;border:1px solid var(--bd);border-radius:12px;padding:24px;width:340px}
+.lc input{width:100%;margin-bottom:10px}.q button{margin:2px 4px 2px 0}
+header{display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:1px solid var(--bd);flex-wrap:wrap}
+header b{color:var(--o);font-size:16px}nav{display:flex;gap:4px;flex:1;flex-wrap:wrap}nav button{border:none;background:none;color:var(--mu)}
+nav button.on{background:var(--ol);color:var(--od);font-weight:600}main{padding:18px 20px;max-width:1100px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:10px 0}
+.m{background:#f7f7f7;border-radius:8px;padding:10px 12px}.m small{display:block;color:var(--mu)}.m b{font-size:22px;font-weight:600}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:7px 8px;border-top:1px solid var(--bd);vertical-align:top}th{color:var(--mu);font-weight:500;border-top:none;font-size:12px}
+.pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:12px;background:#eee}.crit{background:#fde2e2;color:#8a1f1f}.high{background:var(--ol);color:var(--od)}.ok{background:#dff3e4;color:#1d5e33}.warn{background:#fff3cd;color:#6b4e00}
+.bar{height:8px;background:#eee;border-radius:4px;min-width:80px}.bar i{display:block;height:100%;background:var(--o);border-radius:4px}
+.box{border:1px solid var(--bd);border-radius:10px;padding:12px 14px;margin:10px 0}.alert{background:#fff3cd;color:#6b4e00;border-radius:8px;padding:10px 12px;margin:10px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.two{grid-template-columns:1fr}}
+.chip{display:inline-flex;gap:4px;align-items:center;background:#f1f1f1;border-radius:14px;padding:1px 4px 1px 9px;margin:2px;font-size:12px}.chip a{cursor:pointer;color:#a00;padding:0 4px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}img{max-width:100%}#toast{position:fixed;bottom:16px;right:16px;background:#222;color:#fff;padding:10px 14px;border-radius:8px;display:none;z-index:9}
+.sim{font-size:12px;color:var(--od);background:var(--ol);padding:2px 8px;border-radius:10px}small.mu{color:var(--mu)}
+</style></head><body>
+
+<div id="boot" style="position:fixed;inset:0;z-index:50;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:15px system-ui;color:#555;text-align:center;padding:20px">
+<img src="logo.png" style="width:300px;max-width:80%;margin-bottom:18px" onerror="this.style.display='none'">
+<div id="bootmsg"><b style="color:#E8752E">Starting the Python engine...</b><br>First load takes about 20 seconds (NumPy, Pandas and Matplotlib are loading).</div></div>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+let PYAPP=null,TOKEN=null,STATEPATH='';
+const realFetch=window.fetch.bind(window);
+const ready=(async()=>{
+ try{
+  const py=await loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'});
+  await py.loadPackage(['numpy','pandas','matplotlib']);
+  const [code,csv]=await Promise.all([realFetch('kala_fest_allocator.py').then(r=>r.text()),realFetch('volunteers_CSV.csv').then(r=>r.text())]);
+  py.FS.writeFile('kala_fest_allocator.py',code);py.FS.writeFile('volunteers_CSV.csv',csv);
+  py.runPython("import sys\nsys.path.insert(0,'.')\nimport kala_fest_allocator as app");
+  PYAPP=py.globals.get('app');STATEPATH=PYAPP.STATE_FILE;
+  try{const s=localStorage.getItem('kala_state');if(s)py.FS.writeFile(STATEPATH,s)}catch(e){}
+  PYAPP.init_browser('volunteers_CSV.csv');
+  window.__py=py;document.getElementById('boot').style.display='none';
+ }catch(e){document.getElementById('bootmsg').innerHTML='<b style="color:#a00">Could not start the Python engine.</b><br>'+String(e)+'<br>Check your internet connection and reload.'}
+})();
+window.fetch=async(url,opts={})=>{
+ if(typeof url==='string'&&url.startsWith('/api')){
+  await ready;const method=opts.method||'GET';
+  const res=JSON.parse(PYAPP.browser_call(method,url.split('?')[0],opts.body||'',TOKEN));
+  if(res.token)TOKEN=res.token;
+  if(method!=='GET'&&res.status===200){try{localStorage.setItem('kala_state',window.__py.FS.readFile(STATEPATH,{encoding:'utf8'}))}catch(e){}}
+  if(res.csv!==undefined)return new Response(res.csv,{status:200,headers:{'Content-Type':'text/csv'}});
+  return new Response(JSON.stringify(res.body),{status:res.status,headers:{'Content-Type':'application/json'}});
+ }
+ return realFetch(url,opts);
+};
+</script>
+<div id="login"><div class="lc"><img src="logo.png" alt="TAPMI" style="width:100%;margin-bottom:10px" onerror="this.style.display='none'"><div style="color:var(--mu);font-size:12px">TAPMI, Manipal</div>
+<h2><span style="color:var(--o)">Cultural Committee</span> portal</h2>
+<input id="em" placeholder="name@tapmi.edu.in"><input id="pw" type="password" placeholder="Password">
+<button class="p" style="width:100%" onclick="login()">Sign in</button><div id="le" style="color:#a00;margin-top:8px"></div>
+<div class="q" style="margin-top:12px"><small class="mu">Demo quick fill</small><br>
+<button class="s" onclick="fill('convener@tapmi.edu.in','convener123')">Convener</button>
+<button class="s" onclick="fill('coconvener@tapmi.edu.in','coconvener123')">Co-convener</button>
+<button class="s" onclick="fill('abhinav.karthik@tapmi.edu.in','volunteer123')">Volunteer</button></div></div></div>
+<div id="app" style="display:none"><header><img src="logo.png" alt="TAPMI" style="height:30px" onerror="this.style.display='none'"><b>Kala Fest</b><nav id="nav"></nav><span id="who" class="pill"></span><button class="s" onclick="logout()">Sign out</button></header><main id="main"></main></div>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);let ME=null,TAB='dash',CUR=null;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3200)}
+async function api(p,m='GET',b){const r=await fetch('/api'+p,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+ const j=await r.json();if(!r.ok){const e=new Error(j.error.message);e.code=j.error.code;throw e}return j}
+function fill(e,p){$('#em').value=e;$('#pw').value=p}
+async function login(){try{const j=await api('/login','POST',{email:$('#em').value,password:$('#pw').value});ME=j.data;start()}catch(e){$('#le').textContent=e.message}}
+async function downloadCsv(){try{const r=await fetch('/api/export.csv');if(!r.ok){const j=await r.json();return toast(j.error.message)}const u=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=u;a.download='kala_fest_roster.csv';a.click()}catch(e){toast(e.message)}}
+async function logout(){document.cookie='sid=;Path=/;max-age=0';location.reload()}
+const ORG=[['dash','Dashboard'],['reqs','Requirements'],['alloc','Allocation'],['reports','Reports'],['sim','What-if'],['vols','Volunteers'],['audit','Audit']];
+function start(){$('#login').style.display='none';$('#app').style.display='block';$('#who').textContent=ME.name+' ('+ME.role.replace('_','-')+')';
+ const tabs=ME.role==='volunteer'?[['mine','My assignments']]:ORG;TAB=tabs[0][0];
+ $('#nav').innerHTML=tabs.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')">${t[1]}</button>`).join('');go(TAB)}
+function go(t){TAB=t;document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));views[t]()}
+const pill=s=>`<span class="pill ${s==='critical'?'crit':s==='high'?'high':''}">${s}</span>`;
+const stat=v=>`<span class="pill ${v.status==='published'?'ok':'warn'}">${v.status==='published'?'Published':'Draft / not published'} v${v.number}</span>`;
+const cards=m=>`<div class="cards">${[['Required',m.required],['Allocated',m.allocated],['Vacant',m.vacant],['Coverage',m.coverage_pct+'%'],['Priority coverage',m.priority_coverage_pct+'%'],['Eligible unassigned',m.eligible_unassigned]].map(x=>`<div class="m"><small>${x[0]}</small><b>${x[1]}</b></div>`).join('')}</div>`;
+const deptTable=v=>`<table><tr><th>Department</th><th>Priority</th><th>Need</th><th>Filled</th><th>Vacant</th><th>Coverage</th></tr>${v.rows.map(r=>`<tr><td>${esc(r.dept)}<br><small class="mu">${esc(r.role)}</small></td><td>${pill(r.priority)}</td><td>${r.required}</td><td>${r.allocated}</td><td>${r.vacant?'<b style="color:#a00">'+r.vacant+'</b>':0}</td><td><div class="bar"><i style="width:${r.coverage}%"></i></div></td></tr>`).join('')}</table>`;
+async function current(){const vs=(await api('/versions')).data;if(!vs.length)return null;const p=vs.find(v=>v.is_published);return(await api('/version/'+(p?p.id:vs[vs.length-1].id))).data}
+const views={
+async dash(){const v=await current();if(!v){$('#main').innerHTML='<h2>Dashboard</h2><div class="box">No allocation yet. Open <b>Allocation</b> and run Greedy + Optimal.</div>';return}
+ const ch=(await api('/version/'+v.id+'/charts')).data;
+ $('#main').innerHTML=`<h2>Dashboard ${stat(v)}</h2>${cards(v.metrics)}${v.vacancies.length?`<div class="alert">${v.metrics.vacant} position(s) are vacant. ${v.metrics.eligible_unassigned} eligible volunteers remain unassigned. Assign manually or leave open.</div>`:''}
+ <div class="box">${deptTable(v)}</div><img src="data:image/png;base64,${ch.required}"><p><button onclick="downloadCsv()">Download published roster (CSV)</button></p>`},
+async reqs(){const r=(await api('/requirements')).data;
+ $('#main').innerHTML=`<h2>Department requirements</h2><div class="box"><table><tr><th>Dept</th><th>Priority</th><th>Headcount</th><th>Source</th><th>Skills (mandatory)</th><th>Skill holders</th><th>Eligible</th><th></th></tr>${r.map(x=>`<tr><td>${esc(x.dept)}</td><td>${pill(x.priority)}</td><td><input id="h${x.id}" type="number" min="0" value="${x.headcount}" style="width:64px"></td><td>${x.source==='workload'?'Workload: '+x.workload+' x '+x.service_min+' min / '+x.peak_min+' min':'Fixed'}</td><td>${esc(x.skills.join(', '))}</td><td>${x.skill_holders}</td><td>${x.eligible}</td><td><select id="p${x.id}">${['critical','high','normal'].map(p=>`<option ${p===x.priority?'selected':''}>${p}</option>`).join('')}</select> <button class="s" onclick="saveReq('${x.id}',${x.source==='workload'})">Save</button></td></tr>`).join('')}</table></div>
+ <h3>Staffing calculator: ceil(workload x service time / peak window)</h3><div class="row"><input id="cw" type="number" placeholder="Workload" value="120"><input id="cs" type="number" step="0.1" placeholder="Service min" value="1.5"><input id="cp" type="number" placeholder="Peak window min" value="30"><button class="p" onclick="calc()">Calculate</button><b id="cr"></b></div><small class="mu">Editing a requirement invalidates approvals; published versions are never changed.</small>`},
+async alloc(){const lr=(await api('/last_run')).data,vs=(await api('/versions')).data;
+ $('#main').innerHTML=`<h2>Allocation</h2><div class="row"><select id="df"><option value="optimal">Draft from Optimal</option><option value="greedy">Draft from Greedy</option></select><button class="p" onclick="runAlloc()">Run Greedy + Optimal</button><small class="mu">Creates a draft. Volunteers cannot see drafts.</small></div>
+ ${lr?`<div class="two">${['greedy','optimal'].map(k=>{const r=lr[k],m=r.metrics;return `<div class="box" style="${k==='optimal'?'border:2px solid var(--o)':''}"><b>${r.label}</b> <span class="pill">${r.status}</span><br>Filled ${m.allocated}/${m.required} | Priority cov. ${m.priority_coverage_pct}% | Pref fit ${m.pref_fit_pct}%<br>Min dept cov. ${m.min_dept_coverage_pct}% | Fairness std ${m.fairness_std}<br>Skill violations ${m.skill_violations} | Capacity violations ${m.capacity_violations} | ${r.runtime_ms} ms</div>`}).join('')}</div>`:''}
+ <h3>Versions</h3><div class="box"><table><tr><th>#</th><th>Status</th><th>Source</th><th>Created</th><th></th></tr>${vs.slice().reverse().map(v=>`<tr><td>v${v.number}</td><td><span class="pill ${v.status==='published'?'ok':v.status==='approved'?'high':'warn'}">${v.status}</span></td><td>${v.source}</td><td>${v.created}<br><small class="mu">${esc(v.summary)}</small></td><td><button class="s" onclick="openV(${v.id})">Open</button></td></tr>`).join('')||'<tr><td>No versions yet</td></tr>'}</table></div><div id="vd"></div>`;
+ if(CUR&&vs.find(v=>v.id===CUR))openV(CUR)},
+async reports(){const v=await current();if(!v){$('#main').innerHTML='<h2>Reports</h2><div class="box">Run an allocation first.</div>';return}
+ const ch=(await api('/version/'+v.id+'/charts')).data,rc=(await api('/version/'+v.id+'/recs')).data;
+ $('#main').innerHTML=`<h2>Reports ${stat(v)}</h2><h3>Vacancy explanations</h3><div class="box">${v.vacancies.length?`<table><tr><th>Dept</th><th>Vacant</th><th>Skill holders</th><th>Eligible</th><th>Why</th></tr>${v.vacancies.map(x=>`<tr><td>${esc(x.dept)}</td><td>${x.vacant}</td><td>${x.skill_holders}</td><td>${x.eligible}</td><td>${esc(x.why)}</td></tr>`).join('')}</table>`:'All positions filled.'}</div>
+ <h3>Underutilization: eligible but unassigned (${v.eligible_unassigned.length})</h3><div class="box">${v.eligible_unassigned.map(x=>`<span class="chip">${esc(x.name)} <small class="mu">${esc(x.can_fill.join(', '))}</small></span>`).join('')||'None'}</div>
+ <h3>Recommendations</h3><div class="box">${rc.map(x=>`<div>- ${esc(x.text)}</div>`).join('')||'No action needed.'}</div>
+ <h3>Charts</h3><img src="data:image/png;base64,${ch.supply}">${ch.comparison?`<img src="data:image/png;base64,${ch.comparison}">`:''}`},
+async sim(){const sk=[...new Set((await api('/requirements')).data.flatMap(r=>r.skills))];
+ $('#main').innerHTML=`<h2>What-if simulator <span class="sim">Simulation - not published</span></h2><div class="box"><div class="row">Volunteer dropout % <input id="s1" type="number" value="20" min="0" max="90" style="width:70px"> Headcount x <input id="s2" type="number" step="0.1" value="1.2" style="width:70px"> Extra duty hours <input id="s3" type="number" value="0" style="width:70px"></div><div class="row">Add simulated volunteers <input id="s4" type="number" value="0" min="0" style="width:70px"> with skill <select id="s5">${sk.map(s=>`<option>${esc(s)}</option>`).join('')}</select><button class="p" onclick="runSim()">Run scenario</button></div></div><div id="so"></div>`},
+async vols(){const j=await api('/volunteers'),r=j.meta.cleaning;
+ $('#main').innerHTML=`<h2>Volunteers (${j.data.length})</h2><div class="box"><small class="mu">Cleaning report: ${r.rows_read} rows read, ${r.duplicates_removed} duplicates removed, ${r.invalid_removed} invalid removed, ${r.clean_rows} kept.</small></div><div class="box"><table><tr><th>ID</th><th>Name</th><th>Skills</th><th>Availability</th><th>Max h</th><th>Exp</th><th>Active</th></tr>${j.data.map(v=>`<tr><td>${v.id}</td><td>${esc(v.name)}</td><td>${esc(v.skills.join(', '))}</td><td>${v.avail}</td><td>${v.hours}</td><td>${v.exp}</td><td><input type="checkbox" ${v.active?'checked':''} onchange="setActive('${v.id}',this.checked)"></td></tr>`).join('')}</table></div>`},
+async audit(){const a=(await api('/audit')).data;$('#main').innerHTML=`<h2>Audit log</h2><div class="box"><table><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th><th>Reason</th></tr>${a.map(x=>`<tr><td>${x.time}</td><td>${esc(x.actor)}</td><td>${x.action}</td><td>${x.entity}</td><td>${esc(x.detail)}</td><td>${esc(x.reason)}</td></tr>`).join('')||'<tr><td>Nothing yet</td></tr>'}</table></div>`},
+async mine(){const a=(await api('/me/assignments')).data;$('#main').innerHTML=`<h2>My assignments</h2>${a.length?a.map(x=>`<div class="box"><b>${x.event}, ${esc(x.dept)}</b> <span class="pill ok">Published v${x.version}</span><br>Role: ${esc(x.role)} | Duty window: ${x.window}</div>`).join(''):'<div class="box">No published assignment yet. Drafts are not shown.</div>'}<small class="mu">You only see your own published assignment, never drafts or the full roster.</small>`}};
+async function saveReq(id,wl){try{await api('/requirement/'+id,'POST',{headcount:parseInt($('#h'+id).value),priority:$('#p'+id).value,use_workload:false});toast('Saved. Approvals invalidated.');views.reqs()}catch(e){toast(e.message)}}
+async function calc(){try{const j=await api('/calc','POST',{workload:+$('#cw').value,service_min:+$('#cs').value,peak_min:+$('#cp').value});$('#cr').textContent=j.data.formula}catch(e){$('#cr').textContent=e.message}}
+async function runAlloc(){try{const j=await api('/run','POST',{draft_from:$('#df').value});CUR=j.data.version;toast('Draft v'+j.data.version+' created');views.alloc()}catch(e){toast(e.message)}}
+async function setActive(id,a){await api('/volunteer/'+id+'/active','POST',{active:a});toast(a?'Activated':'Deactivated')}
+async function openV(id){CUR=id;const v=(await api('/version/'+id)).data;
+ $('#vd').innerHTML=`<h3>Version ${v.number} ${stat(v)}</h3>${cards(v.metrics)}<div class="row">${v.status==='draft'?`<button class="p" onclick="act(${id},'approve')">Approve this version</button>`:''}${v.status==='approved'?`<button class="p" onclick="act(${id},'publish')">Publish</button>`:''}<button onclick="regen()">Regenerate...</button>${v.stale?'<span class="pill warn">Requirements changed since this draft</span>':''}</div>
+ <div class="box"><table><tr><th>Department</th><th>Assigned</th><th>Vacant</th><th></th></tr>${v.rows.map(r=>`<tr><td>${esc(r.dept)}<br>${pill(r.priority)}</td><td>${r.people.map(p=>`<span class="chip">${esc(p.name)}${p.override?' <span class="pill warn">override</span>':''}${p.source==='manual'?' <span class="pill">manual</span>':''}<a title="Remove" onclick="edit(${id},{op:'remove',req_id:'${r.req_id}',vol_id:'${p.vol_id}'},${v.row_version})">x</a></span>`).join('')||'<small class="mu">none</small>'}</td><td>${r.vacant}</td><td>${r.vacant?`<button class="s" onclick="pick(${id},'${r.req_id}',${v.row_version})">+ Assign</button>`:''}</td></tr>`).join('')}</table></div><div id="pk"></div>`;}
+async function act(id,a){try{await api('/version/'+id+'/'+a,'POST',{});toast(a==='publish'?'Published. Volunteers can now see it.':'Approved');views.alloc()}catch(e){toast(e.message)}}
+function regen(){if(confirm('Regenerate creates a NEW draft from the algorithm. Manual edits stay in their old version. Continue?'))runAlloc()}
+async function pick(id,req,rv){const c=(await api('/version/'+id+'/candidates','POST',{req_id:req})).data;
+ $('#pk').innerHTML=`<div class="box"><b>Choose a volunteer</b> (eligible first; others need a skill-override reason)<div class="row"><select id="cv" size="8" style="min-width:380px">${c.map(x=>`<option value="${x.id}" ${x.blocked?'disabled':''}>${x.eligible?'[eligible] ':x.blocked?'[blocked] ':'[skill mismatch] '}${esc(x.name)}${x.eligible?'':' - '+esc(x.why)}</option>`).join('')}</select><button class="p" onclick="doAdd(${id},'${req}',${rv})">Assign</button></div></div>`}
+async function doAdd(id,req,rv){const vid=$('#cv').value;if(!vid)return toast('Select a volunteer first');edit(id,{op:'add',req_id:req,vol_id:vid},rv)}
+async function edit(id,b,rv){b.row_version=rv;try{const j=await api('/version/'+id+'/edit','POST',b);toast('Saved');CUR=j.data.version;views.alloc()}
+ catch(e){if(e.code==='SKILL_MISMATCH'){const r=prompt(e.message+'\n\nEnter a reason to override:');if(r&&r.trim()){b.confirm_skill=true;b.reason=r.trim();return edit(id,b,rv)}}else toast(e.message)}}
+async function runSim(){const j=await api('/simulate','POST',{dropout_pct:+$('#s1').value,headcount_mult:+$('#s2').value,extra_hours:+$('#s3').value,sim_volunteers:+$('#s4').value,sim_skill:$('#s5').value});const d=j.data;
+ const row=(n,k,f)=>`<tr><td>${n}</td>${['greedy','optimal'].map(a=>`<td>${d.baseline[a].metrics[k]}${f||''}</td><td><b>${d.scenario[a].metrics[k]}${f||''}</b></td>`).join('')}</tr>`;
+ $('#so').innerHTML=`<div class="box"><span class="sim">Simulation - not published</span> ${d.live_unchanged?'<span class="pill ok">Live data unchanged</span>':'<span class="pill crit">Live data CHANGED</span>'}<p>${d.notes.map(esc).join('; ')}</p><table><tr><th></th><th colspan="2">Greedy (base | scenario)</th><th colspan="2">Optimal (base | scenario)</th></tr>${row('Required','required')}${row('Allocated','allocated')}${row('Vacant','vacant')}${row('Coverage','coverage_pct','%')}${row('Priority coverage','priority_coverage_pct','%')}${row('Preference fit','pref_fit_pct','%')}</table></div>`}
+</script></body></html>
